@@ -1,57 +1,35 @@
 # backend/app.py
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
 from flask_cors import CORS
-
-# Import our custom services
-from services.youtube_service import fetch_youtube_resources
-from ML.classifier import dummy_classify_difficulty
-
-from services.db_service import get_cached_path, save_to_cache
+from pymongo import MongoClient  
 
 app = Flask(__name__)
 CORS(app) # Allows your React frontend to communicate with Flask
 
-@app.route('/api/search', methods=['GET'])
-def generate_learning_path():
-    query = request.args.get('q')
-    
-    if not query:
-        return jsonify({"error": "Please provide a search query (e.g., ?q=react hooks)"}), 400
+# Initialize MongoDB Connection
+client = MongoClient("mongodb://localhost:27017/")
+db = client.learning_path_db
 
-    print(f"User searched for: {query}")
 
+@app.route('/api/modules', methods=['GET'])
+def get_curriculum():
     try:
-        cached_data = get_cached_path(query)
-        if cached_data:
-            return jsonify({
-                "topic": query,
-                "status": "success",
-                "source": "database_cache", # Tells React where it came from
-                "learning_path": cached_data["learning_path"]
-            }), 200
+        # Fetch all modules from the database
+        modules = list(db.modules.find({}))
         
-        # Fetch raw data from YouTube 
-        # We fetch a bit more (e.g., 15) so the ML has enough to sort into 3 buckets
-        raw_resources = fetch_youtube_resources(query, max_results=15)
-        
-        if not raw_resources:
-            return jsonify({"error": "No resources found for this topic."}), 404
-
-        # 2. Pass data to the ML component (Developer 1's domain)
-        structured_path = dummy_classify_difficulty(raw_resources)
-
-        save_to_cache(query, structured_path) #saving cache for future reference
-
-        # 3. Return the final structured JSON
+        # Clean up the MongoDB ObjectId for JSON serialization
+        for mod in modules:
+            mod['_id'] = str(mod['_id'])
+            
         return jsonify({
-            "topic": query,
             "status": "success",
-            "learning_path": structured_path
+            "data": modules
         }), 200
-
+        
     except Exception as e:
-        print(f"Error during search: {e}")
-        return jsonify({"error": "Internal server error"}), 500
+        print(f"Error fetching modules: {e}")
+        return jsonify({"error": "Failed to fetch curriculum"}), 500
+
 
 if __name__ == '__main__':
     # Runs the server on port 5000
