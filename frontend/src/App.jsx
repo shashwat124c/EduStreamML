@@ -1,20 +1,37 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 
 export default function App() {
   const [view, setView] = useState('courses'); 
   const [modules, setModules] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedTopic, setSelectedTopic] = useState(null);
+  const [user, setUser] = useState(null); // Tracks logged-in user
 
   useEffect(() => {
     axios.get('http://localhost:5000/api/modules')
       .then(res => setModules(res.data.data));
   }, []);
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      // Send the secure Google token to our Flask backend
+      const res = await axios.post('http://localhost:5000/api/auth/google', {
+        token: credentialResponse.credential
+      });
+      
+      // Save the user data returned from MongoDB into React State
+      setUser(res.data.user);
+      console.log("Logged in successfully!", res.data.user);
+    } catch (error) {
+      console.error("Login Failed on backend", error);
+    }
+  };
+
   // --- VIEW 1: COURSE SELECTION ---
   const CourseLanding = () => {
-    const uniqueCourses = [...new Set(modules.map(m => m.course))];
+    const uniqueCourses = [...new Set(modules.map(m => m.course))]; //“Take all courses → remove duplicates → make it usable again”
     
     // A little helper to give different courses different accent colors
     const getAccent = (index) => {
@@ -276,28 +293,47 @@ export default function App() {
 
   // --- MAIN RENDER BLOCK ---
   return (
-    <div className="min-h-screen bg-[#F8FAFC] selection:bg-blue-200 font-sans pb-24">
-      {/* Sleek Floating Navbar */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 border-b border-slate-200/50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('courses')}>
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
-              <div className="w-3 h-3 bg-white rounded-full"></div>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+      <div className="min-h-screen bg-[#F8FAFC] selection:bg-blue-200 font-sans pb-24">
+        {/* Sleek Floating Navbar */}
+        <nav className="sticky top-0 z-50 backdrop-blur-xl bg-white/70 border-b border-slate-200/50">
+          <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div className="flex items-center gap-2 cursor-pointer" 
+            onClick={() => setView('courses')}>
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
+                <div className="w-3 h-3 bg-white rounded-full"></div>
+              </div>
+              <h1 className="text-2xl font-black tracking-tight text-slate-900">EduStream<span className="text-blue-600">AI</span></h1>
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">EduStream<span className="text-blue-600">AI</span></h1>
-          </div>
-          <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-            <div className="w-7 h-7 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-sm">S</div>
-            <span className="text-sm font-bold text-slate-700 pr-2">Shashwat</span>
-          </div>
-        </div>
-      </nav>
+            
+            {/* AUTHENTICATION UI */}
+            <div>
+              {user ? (
+                <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
+                  <img src={user.picture} alt="Profile" className="w-7 h-7 rounded-full" />
+                  <span className="text-sm font-bold text-slate-700 pr-2">{user.name}</span>
+                  {/* Basic Logout: just clear the state */}
+                  <button onClick={() => setUser(null)} className="text-xs text-slate-400 hover:text-red-500 font-bold ml-2">Logout</button>
+                </div>
+              ) : (
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => console.log('Google Login Failed')}
+                  theme="outline"
+                  shape="pill"
+                />
+              )}
+            </div>
 
-      <main className="max-w-6xl mx-auto px-6">
-        {view === 'courses' && <CourseLanding />}
-        {view === 'topics' && <TopicList />}
-        {view === 'quiz' && <KnowledgeCheck />}
-      </main>
-    </div>
+          </div>
+        </nav>
+
+        <main className="max-w-6xl mx-auto px-6">
+          {view === 'courses' && <CourseLanding />}
+          {view === 'topics' && <TopicList />}
+          {view === 'quiz' && <KnowledgeCheck />}
+        </main>
+      </div>
+    </GoogleOAuthProvider>
   );
 }
