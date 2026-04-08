@@ -80,6 +80,31 @@ def google_auth():
         # Invalid token
         return jsonify({"error": "Invalid Google token"}), 401
 
+@app.route('/api/progress', methods=['POST'])
+def update_progress():
+    token = request.json.get('token')
+    topic_id = request.json.get('topic_id')
+    if not token or not topic_id:
+        return jsonify({"error": "Missing data"}), 400
+
+    try:
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+        email = idinfo['email']
+
+        db.users.update_one(
+            {"email": email},
+            {"$addToSet": {"completed_topics": topic_id}}
+        )
+        
+        updated_user = db.users.find_one({"email": email})
+        if updated_user:
+            updated_user['_id'] = str(updated_user['_id'])
+            return jsonify({"status": "success", "user": updated_user}), 200
+        return jsonify({"error": "User not found"}), 404
+        
+    except ValueError:
+        return jsonify({"error": "Invalid Google token"}), 401
+
 if __name__ == '__main__':
     # Runs the server on port 5000
     print("Starting backend server on http://localhost:5000...")
