@@ -10,6 +10,18 @@ export default function App() {
   const location = useLocation();
   const [modules, setModules] = useState([]);
 
+  const findModuleByPrereq = (prereqId) => {
+    if (!prereqId) return null;
+    const normalized = String(prereqId).toLowerCase().replace(/_/g, ' ');
+    return modules.find(m => 
+       m.topic_id === prereqId ||
+       m.name === prereqId ||
+       m.name.toLowerCase() === normalized ||
+       m.skills?.includes(prereqId) ||
+       m.skills?.some(s => s.toLowerCase().replace(/_/g, ' ') === normalized)
+    );
+  };
+
   const pageVariants = {
     initial: { opacity: 0, y: 15, filter: "blur(4px)" },
     animate: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.4, ease: "easeOut" } },
@@ -123,7 +135,7 @@ export default function App() {
     const getPrereqNames = (prereqIds) => {
       if (!prereqIds || prereqIds.length === 0) return "None";
       return prereqIds.map(id => {
-        const found = modules.find(m => m.skills?.includes(id));
+        const found = findModuleByPrereq(id);
         return found ? found.name : id;
       }).join(", ");
     };
@@ -422,11 +434,17 @@ export default function App() {
                   </div>
                   <p className="text-slate-500 text-sm mb-8 leading-relaxed">We've selected a foundational module that covers the essential prerequisites. This will give you the knowledge you need to succeed.</p>
 
-                  {selectedTopic.prerequisites.length > 0 && selectedTopic.prerequisites.map(prereqId => {
-                      const prereqModule = modules.find(m => m.skills?.includes(prereqId));
-                      if (!prereqModule) return null;
-                      return (
-                        <div key={prereqId} className="w-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-[2rem] p-8 text-white shadow-xl shadow-orange-500/20 relative overflow-hidden group">
+                  <div className="flex flex-col gap-6">
+                  {selectedTopic.prerequisites.length > 0 && selectedTopic.prerequisites
+                     .reduce((acc, curr) => {
+                        const mod = findModuleByPrereq(curr);
+                        if (mod && !acc.find(m => m.topic_id === mod.topic_id)) {
+                           acc.push(mod);
+                        }
+                        return acc;
+                     }, [])
+                     .map((prereqModule, idx) => (
+                        <div key={idx} className="w-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-[2rem] p-8 text-white shadow-xl shadow-orange-500/20 relative overflow-hidden group">
                            <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
                            <div className="flex flex-col md:flex-row gap-6 items-start md:items-center relative z-10">
                               <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 border border-white/20">
@@ -445,8 +463,9 @@ export default function App() {
                               Start Learning
                            </button>
                         </div>
-                      )
-                  })}
+                      ))
+                  }
+                  </div>
                </div>
                
                <div className="flex flex-col md:flex-row gap-4 w-full mt-6">
