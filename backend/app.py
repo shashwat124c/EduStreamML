@@ -1,4 +1,5 @@
 # backend/app.py
+import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from pymongo import MongoClient  
@@ -9,10 +10,11 @@ app = Flask(__name__)
 CORS(app) # Allows your React frontend to communicate with Flask
 
 # Initialize MongoDB Connection
-client = MongoClient("mongodb://localhost:27017/")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+client = MongoClient(MONGO_URI)
 db = client.learning_path_db
 
-GOOGLE_CLIENT_ID = "655631990423-n5gsmr8hlae8d8s3fqj8hqbgugr8vs6n.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "655631990423-n5gsmr8hlae8d8s3fqj8hqbgugr8vs6n.apps.googleusercontent.com")
 
 @app.route('/api/modules', methods=['GET'])
 def get_curriculum():

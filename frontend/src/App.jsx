@@ -5,6 +5,11 @@ import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import YouTube from 'react-youtube';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Compass, Code, Database, BrainCircuit, ArrowRight, PlayCircle, Lock, BookOpen, User, CheckCircle2, AlertCircle, PlaySquare, ArrowLeft, Lightbulb } from 'lucide-react';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL !== undefined 
+  ? import.meta.env.VITE_API_URL 
+  : (import.meta.env.DEV ? 'http://localhost:5000' : '');
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,14 +49,14 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/modules')
+    axios.get(`${API_BASE_URL}/api/modules`)
       .then(res => setModules(res.data.data));
   }, []);
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       // Send the secure Google token to our Flask backend
-      const res = await axios.post('http://localhost:5000/api/auth/google', {
+      const res = await axios.post(`${API_BASE_URL}/api/auth/google`, {
         token: credentialResponse.credential
       });
 
@@ -310,7 +315,7 @@ export default function App() {
     const markComplete = async () => {
       if (!user || !user.token) return;
       try {
-        const res = await axios.post('http://localhost:5000/api/progress', {
+        const res = await axios.post(`${API_BASE_URL}/api/progress`, {
           token: user.token,
           topic_id: selectedTopic.topic_id
         });
