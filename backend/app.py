@@ -108,6 +108,6 @@ def update_progress():
         return jsonify({"error": "Invalid Google token"}), 401
 
 if __name__ == '__main__':
-    # Runs the server on port 5000
-    print("Starting backend server on http://localhost:5000...")
-    app.run(debug=True, port=5000)
+    port = int(os.getenv("PORT", 5000))
+    print(f"Starting backend server on port {port}...")
+    app.run(debug=True, host='0.0.0.0', port=port)
